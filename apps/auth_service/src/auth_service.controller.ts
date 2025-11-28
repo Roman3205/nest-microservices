@@ -7,12 +7,12 @@ export class AuthServiceController {
   constructor(private readonly authServiceService: AuthServiceService) {}
 
   @MessagePattern('auth-login')
-  async login(@Payload() credentials: { username: string; password: string }) {
+  login(@Payload() credentials: { username: string; password: string }) {
     return this.authServiceService.login(credentials);
   }
 
   @MessagePattern('validate-token')
-  async validateToken(@Payload() token: string) {
+  validateToken(@Payload() token: string) {
     return this.authServiceService.validateToken(token);
   }
 }

@@ -4,7 +4,7 @@ import { Injectable } from '@nestjs/common';
 export class UserServiceService {
   private users = [
     {
-      id: '123',
+      id: '1',
       name: 'John Doe',
     },
   ];

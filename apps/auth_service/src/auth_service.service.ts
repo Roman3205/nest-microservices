@@ -1,29 +1,39 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class AuthServiceService {
-  constructor(private readonly jwtService: JwtService) {}
+  constructor(
+    private readonly jwtService: JwtService,
+    private readonly config: ConfigService,
+  ) {}
   login(credentials: { username: string; password: string }) {
     if (credentials.username === 'admin' && credentials.password === 'admin') {
       const payload = {
-        sub: '123',
+        sub: '1',
         username: credentials.username,
         role: 'admin',
       };
-      const token = this.jwtService.sign(payload);
+
+      const token = this.jwtService.sign(payload, {
+        secret: this.config.get('SECRET_JWT'),
+        expiresIn: '1h',
+      });
       return token;
     }
 
     throw new UnauthorizedException('Invalid credentials');
   }
 
-  async validateToken(token: string) {
-    try {
-      const decoded = this.jwtService.verify(token);
-      return { userId: decoded.sub, role: decoded.role };
-    } catch (error) {
+  validateToken(token: string) {
+    const decoded = this.jwtService.verify<{ sub: string; role: string }>(
+      token,
+      { secret: this.config.get('SECRET_JWT') },
+    );
+    if (!decoded) {
       throw new UnauthorizedException();
     }
+    return { userId: decoded.sub, role: decoded.role };
   }
 }

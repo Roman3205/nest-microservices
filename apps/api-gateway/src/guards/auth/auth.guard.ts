@@ -6,7 +6,8 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
-import { Observable, firstValueFrom } from 'rxjs';
+import { Request } from 'express';
+import { firstValueFrom } from 'rxjs';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -14,11 +15,11 @@ export class AuthGuard implements CanActivate {
     @Inject('AUTH-SERVICE') private readonly authClient: ClientProxy,
   ) {}
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const req = context.switchToHttp().getRequest();
+    const req: Request = context.switchToHttp().getRequest();
     const authHeader = req.headers['authorization'] as string;
     if (!authHeader) throw new UnauthorizedException('Missing token');
     const token = authHeader.split(' ')[1];
-    const result = await firstValueFrom(
+    const result: { userId: number; role: string } = await firstValueFrom(
       this.authClient.send('validate-token', token),
     );
 

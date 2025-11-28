@@ -8,7 +8,9 @@ export class AuthController {
     @Inject('AUTH-SERVICE') private readonly authClient: ClientProxy,
   ) {}
   @Post('login')
-  async login(@Body() data: { username: string; password: string }) {
+  async login(
+    @Body() data: { username: string; password: string },
+  ): Promise<string> {
     return firstValueFrom(this.authClient.send('auth-login', data));
   }
 }

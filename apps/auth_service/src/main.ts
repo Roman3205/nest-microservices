@@ -14,7 +14,7 @@ async function bootstrap() {
       },
     },
   );
-  await app.listen(process.env.port ?? 3002);
+  await app.listen();
   Logger.log('Auth Service is running TCP port 8877');
 }
 bootstrap();

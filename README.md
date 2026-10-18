@@ -31,6 +31,61 @@
 $ npm install
 ```
 
+## TLS certificates (mTLS)
+
+`api-gateway` and `user_service` talk over TCP using mTLS: each side presents its own certificate signed by a shared CA. Certificates and keys are not stored in the repository (see `.gitignore`), so you need to generate them after cloning (requires `openssl`).
+
+### 1. Generate
+
+From the project root:
+
+```bash
+mkdir -p certs && cd certs
+
+# CA: the certificate authority that signs all other certificates
+openssl genrsa -out ca.key 4096
+openssl req -x509 -new -key ca.key -sha256 -days 365 -subj "/CN=myCA" -out ca.crt
+
+# Server (user_service)
+openssl genrsa -out server.key 2048
+openssl req -new -key server.key -subj "/CN=localhost" -out server.csr
+openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial -days 365 -sha256 \
+  -extfile <(printf "subjectAltName=DNS:localhost,IP:127.0.0.1\nextendedKeyUsage=serverAuth") \
+  -out server.crt
+
+# Client (api-gateway)
+openssl genrsa -out client.key 2048
+openssl req -new -key client.key -subj "/CN=api-gateway" -out client.csr
+openssl x509 -req -in client.csr -CA ca.crt -CAkey ca.key -CAcreateserial -days 365 -sha256 \
+  -extfile <(printf "extendedKeyUsage=clientAuth") \
+  -out client.crt
+
+cd ..
+```
+
+> `subjectAltName` is required: Node.js checks the address it connects to (`127.0.0.1`) against the server certificate's SAN and drops the connection if it doesn't match.
+
+### 2. Copy to services
+
+Each service gets only the files it needs. Nest CLI copies `apps/<app>/src/certs` to `dist/apps/<app>/certs` on build and start (`assets` in `nest-cli.json`).
+
+```bash
+mkdir -p apps/user_service/src/certs apps/api-gateway/src/certs
+cp certs/{server.key,server.crt,ca.crt} apps/user_service/src/certs/
+cp certs/{client.key,client.crt,ca.crt} apps/api-gateway/src/certs/
+```
+
+| File | What it is | Needed by |
+|---|---|---|
+| `ca.key` | CA private key, used to sign certificates | issuing only; never copy to services |
+| `ca.crt` | CA certificate, used to verify the peer's certificate | everyone |
+| `ca.srl` | openssl serial number counter | issuing only |
+| `server.key` / `server.crt` | server key and certificate | `user_service` |
+| `client.key` / `client.crt` | client key and certificate | `api-gateway` |
+| `*.csr` | signing requests, not needed after issuing | no one |
+
+Certificates are valid for 365 days. When they expire, repeat both steps.
+
 ## Compile and run the project
 
 ```bash
